@@ -1,0 +1,11 @@
+import { build } from 'esbuild';
+import { mkdir, readdir, readFile, writeFile, unlink, copyFile } from 'node:fs/promises';
+await mkdir('assets', { recursive: true });
+for (const f of await readdir('assets')) if (/^(app|scene|chunk|style)-.*\.(js|css)$/.test(f)) await unlink(`assets/${f}`);
+const result = await build({ entryPoints: ['src/app.js', 'src/style.css'], outdir: 'assets', entryNames: '[name]-[hash]', chunkNames: '[name]-[hash]', bundle: true, splitting: true, format: 'esm', minify: true, target: ['es2022'], external: ['../assets/grain.svg'], metafile: true, legalComments: 'none' });
+const output = Object.entries(result.metafile.outputs);
+const js = output.find(([,m]) => m.entryPoint === 'src/app.js')[0];
+const css = output.find(([,m]) => m.entryPoint === 'src/style.css')[0];
+await writeFile('index.html', (await readFile('src/index.html', 'utf8')).replace('__APP_SCRIPT__', js).replace('__STYLE__', css));
+await copyFile('node_modules/three/LICENSE', 'assets/three-LICENSE.txt');
+console.log(`Built ${js} and ${css}`);
